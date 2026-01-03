@@ -1,7 +1,9 @@
 import pandas as pd
+import numpy as np
 import time 
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.preprocessing import OneHotEncoder
+import joblib
 
 
 def csv_to_dataframe(filePath: str):
@@ -41,6 +43,7 @@ def csv_to_dataframe(filePath: str):
     encodedFormDam = ordinalEncoder.fit_transform(np.array(df['form2']).reshape(-1,1))
 
     # saving the encoder in case we need it to reverse-engineer the encoder
+
     joblib.dump(ordinalEncoder, "data/ordinalEncoder.pk1")
 
     df = df.drop(['form2'], axis=1)

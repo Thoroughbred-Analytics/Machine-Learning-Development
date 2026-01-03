@@ -1,8 +1,4 @@
-from model.model import *
-from model.util import *
-from model.train import *
-from model.predict import *
-from model import model
+from dataHandler import *
 import torch
 import pandas as pd
 import argparse
@@ -67,7 +63,7 @@ def main():
     if args.command == "create-dataset":
 
         try:
-            df, _ = preprocess_csv(args.input_path)
+            df, _ = csv_to_dataframe(args.input_path)
             df.to_csv(args.output_dataset, index=False)
 
         except FileNotFoundError:
