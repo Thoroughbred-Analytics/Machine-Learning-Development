@@ -63,7 +63,7 @@ def main():
     if args.command == "create-dataset":
 
         try:
-            df, _ = csv_to_dataframe(args.input_path)
+            df = csv_to_dataframe(args.input_path)
             df.to_csv(args.output_dataset, index=False)
 
         except FileNotFoundError:
