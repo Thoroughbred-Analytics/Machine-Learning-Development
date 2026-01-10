@@ -4,8 +4,30 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.tree import plot_tree
 from category_encoders import TargetEncoder
 from sklearn.metrics import mean_squared_error, r2_score
+import matplotlib.pyplot as plt
+
+
+
+def generate_tree(model, df, output_path='tree.png'):
+    """
+    Generates a visualization of the first tree in the RandomForest model.
+    
+    Args:
+        model: Trained RandomForest model
+        df: Pandas DataFrame with feature columns (used for feature names)
+        output_path: Path to save the tree image
+    """
+    feature_names = df.columns.tolist()
+    tree = model.estimators_[0]  # Visualize the first tree in the forest
+    
+    plt.figure(figsize=(20, 10))
+    plot_tree(tree, feature_names=feature_names, filled=True, rounded=True, max_depth=5)
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Tree visualization saved to {output_path}")
 
 
 
@@ -27,6 +49,8 @@ def train_model(data_path):
     rf = RandomForestRegressor(n_estimators=100, random_state=42, verbose=1)
     rf.fit(X_train, y_train)
 
+    # Generate tree visualization
+    generate_tree(rf, X_train)
 
     # Evaluating the model
     y_pred = rf.predict(X_test)
