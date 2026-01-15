@@ -8,7 +8,9 @@ from sklearn.tree import plot_tree
 from category_encoders import TargetEncoder
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import GridSearchCV
+from sklearn.dummy import DummyRegressor
 import matplotlib.pyplot as plt
+import xgboost as xgb
 
 
 
@@ -56,24 +58,34 @@ def train_model(data_path):
     }
 
 
-    rf = RandomForestRegressor(n_estimators=100, random_state=42, verbose=1)
-
-    gridSearch = GridSearchCV(estimator=rf, param_grid=paramGrid, cv=5, n_jobs=-1, verbose=2)
+    rf = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=13)
+    xgbRegressor = xgb.XGBRegressor()
+    #gridSearch = GridSearchCV(estimator=rf, param_grid=paramGrid, cv=5, n_jobs=-1, verbose=2)
 
     # Fitting the model
-    gridSearch.fit(X_train, y_train)
+    xgbRegressor.fit(X_train, y_train)
 
     # Generate tree visualization
-    generate_tree(rf, X_train)
+    #generate_tree(rf, X_train)
 
     # Evaluating the model with predctions on X_test
 
-    y_pred = gridSearch.predict(X_test)
+    y_pred = xgbRegressor.predict(X_test)
+
+    print(f"predictions: {y_pred[0:10]}\n")
+    print(f"actual: {y_test.iloc[0:10].to_numpy()}\n")
+    
     mse = mean_squared_error(y_test, y_pred)
 
     r2 = r2_score(y_test, y_pred)
-    accuracy = gridSearch.score(X_test, y_test)
+    accuracy = xgbRegressor.score(X_test, y_test)
+    
+    # getting dummy regressor score for comparison
+    dummy = DummyRegressor(strategy="mean")
+    dummy.fit(X_train, y_train)
+    dummy_score = dummy.score(X_test, y_test)
 
+    print(f"Dummy Regressor R2 Score: {dummy_score}")
     print(f"mse: {mse}")
     print(f"r2: {r2}")
     print(f"accuracy: {accuracy}")
