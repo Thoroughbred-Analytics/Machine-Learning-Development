@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import seaborn as sns
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
@@ -12,6 +13,56 @@ from sklearn.dummy import DummyRegressor
 import matplotlib.pyplot as plt
 import xgboost as xgb
 
+
+def display_predictions(model, X_test, y_test, names_test, num_predictions=10):
+    """
+    Displays a comparison of predicted and actual values for the test set.
+    
+    Args:
+        model: Trained model
+        X_test: Test feature set
+        y_test: Actual target values for the test set
+        names_test: Names corresponding to the test set
+        num_predictions: Number of predictions to display
+    """
+    y_pred = model.predict(X_test)
+    print("Predicted vs Actual values:")
+    for i in range(num_predictions):
+        print(f"{names_test.iloc[i]}: Predicted: {y_pred[i]:.2f}, Actual: {y_test.iloc[i]}")
+    
+    # Create a dataframe for plotting
+    plot_data = pd.DataFrame({
+        'Name': list(names_test.iloc[:num_predictions]) * 2,
+        'Value': list(y_pred[:num_predictions]) + list(y_test.iloc[:num_predictions]),
+        'Type': ['Predicted'] * num_predictions + ['Actual'] * num_predictions
+    })
+    
+    # Create the plot
+    plt.figure(figsize=(14, 8))
+    sns.set_style("whitegrid")
+    
+    # Plot the connected dots
+    for i in range(num_predictions):
+        plt.plot([i, i], 
+                [y_pred[i], y_test.iloc[i]], 
+                'gray', 
+                linestyle='--', 
+                linewidth=1, 
+                alpha=0.5)
+    
+    # Plot the points
+    sns.scatterplot(data=plot_data, x='Name', y='Value', hue='Type', 
+                   style='Type', s=100, palette=['#ff7f0e', '#1f77b4'])
+    
+    plt.xlabel('Horse', fontsize=12)
+    plt.ylabel('Rating', fontsize=12)
+    plt.title('Predicted vs Actual Ratings', fontsize=14, fontweight='bold')
+    plt.xticks(rotation=45, ha='right')
+    plt.legend(title='Type', fontsize=10)
+    plt.tight_layout()
+    plt.show()
+
+    
 
 
 def generate_tree(model, df, output_path='tree.png'):
@@ -41,9 +92,11 @@ def train_model(data_path):
     nameEncoder = TargetEncoder(cols=['sire', 'dam', 'bmSire'], smoothing=10.0)
 
     y = df['rating']
+    names = df['name']
     X = df.drop(columns=['rating', 'name'])
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
+    X_train, X_test, y_train, y_test, names_train, names_test = train_test_split(
+    X, y, names, test_size=0.2, random_state=42
+)
 
     X_train = nameEncoder.fit_transform(X_train, y_train)  
     X_test = nameEncoder.transform(X_test)                 
@@ -80,12 +133,8 @@ def train_model(data_path):
     r2 = r2_score(y_test, y_pred)
     accuracy = xgbRegressor.score(X_test, y_test)
     
-    # getting dummy regressor score for comparison
-    dummy = DummyRegressor(strategy="mean")
-    dummy.fit(X_train, y_train)
-    dummy_score = dummy.score(X_test, y_test)
+    display_predictions(xgbRegressor, X_test, y_test,names_test,  num_predictions=10)
 
-    print(f"Dummy Regressor R2 Score: {dummy_score}")
     print(f"mse: {mse}")
     print(f"r2: {r2}")
     print(f"accuracy: {accuracy}")
