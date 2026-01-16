@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import xgboost as xgb
 
 
+
+
 def display_predictions(model, X_test, y_test, names_test, num_predictions=10):
     """
     Displays a comparison of predicted and actual values for the test set.
@@ -28,7 +30,7 @@ def display_predictions(model, X_test, y_test, names_test, num_predictions=10):
     y_pred = model.predict(X_test)
     print("Predicted vs Actual values:")
     for i in range(num_predictions):
-        print(f"{names_test.iloc[i]}: Predicted: {y_pred[i]:.2f}, Actual: {y_test.iloc[i]}")
+        print(f"{names_test.iloc[i]} -  Predicted: {y_pred[i]:.2f}, Actual: {y_test.iloc[i]}")
     
     # Create a dataframe for plotting
     plot_data = pd.DataFrame({
@@ -62,26 +64,6 @@ def display_predictions(model, X_test, y_test, names_test, num_predictions=10):
     plt.tight_layout()
     plt.show()
 
-    
-
-
-def generate_tree(model, df, output_path='tree.png'):
-    """
-    Generates a visualization of the first tree in the RandomForest model.
-    
-    Args:
-        model: Trained RandomForest model
-        df: Pandas DataFrame with feature columns (used for feature names)
-        output_path: Path to save the tree image
-    """
-    feature_names = df.columns.tolist()
-    tree = model.estimators_[0]  # Visualize the first tree in the forest
-    
-    plt.figure(figsize=(20, 10))
-    plot_tree(tree, feature_names=feature_names, filled=True, rounded=True, max_depth=3)
-    plt.savefig(output_path)
-    print(f"Tree visualization saved to {output_path}")
-    plt.close()
 
 
 
@@ -95,52 +77,45 @@ def train_model(data_path):
     names = df['name']
     X = df.drop(columns=['rating', 'name'])
     X_train, X_test, y_train, y_test, names_train, names_test = train_test_split(
-    X, y, names, test_size=0.2, random_state=42
-)
+        X, y, names, test_size=0.2, random_state=42)
 
     X_train = nameEncoder.fit_transform(X_train, y_train)  
     X_test = nameEncoder.transform(X_test)                 
 
-    paramGrid = {
-        'n_estimators': [100, 200, 300],
-        'max_depth': [None, 10, 20],
-        'max_features': ['auto', 'sqrt', 'log2'],
-        'min_samples_split': [2, 5],
-        'min_samples_leaf': [1, 2],
-        'criterion': ['squared_error', 'absolute_error', 'gini', 'entropy']
-    }
 
-
-    rf = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=13)
+    # rf = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=13)
     xgbRegressor = xgb.XGBRegressor()
-    #gridSearch = GridSearchCV(estimator=rf, param_grid=paramGrid, cv=5, n_jobs=-1, verbose=2)
-
+  
     # Fitting the model
     xgbRegressor.fit(X_train, y_train)
 
-    # Generate tree visualization
-    #generate_tree(rf, X_train)
 
     # Evaluating the model with predctions on X_test
-
     y_pred = xgbRegressor.predict(X_test)
-
-    print(f"predictions: {y_pred[0:10]}\n")
-    print(f"actual: {y_test.iloc[0:10].to_numpy()}\n")
     
     mse = mean_squared_error(y_test, y_pred)
 
     r2 = r2_score(y_test, y_pred)
     accuracy = xgbRegressor.score(X_test, y_test)
     
-    display_predictions(xgbRegressor, X_test, y_test,names_test,  num_predictions=10)
-
+    print("\n==== Model Evaluation Metrics: ====")
     print(f"mse: {mse}")
     print(f"r2: {r2}")
     print(f"accuracy: {accuracy}")
+    print("===================================\n")
 
+    # display predictions
+    display_predictions(xgbRegressor, X_test, y_test, names_test,  num_predictions=10)
 
+    # display the decision tree
 
+    graph1 = xgb.to_graphviz(xgbRegressor, tree_idx=0)
+    graph1.render("xgb_tree 1")
+
+    graph2 = xgb.to_graphviz(xgbRegressor, tree_idx=50)
+    graph2.render("xgb_tree 50")
+
+    
 if __name__ == "__main__":
     data_path = "data/baseData.csv"
     train_model(data_path)
