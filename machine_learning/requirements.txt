@@ -9,3 +9,6 @@ seaborn
 graphviz
 fastapi
 uvicorn
+imblearn
+xgboost
+category-encoders

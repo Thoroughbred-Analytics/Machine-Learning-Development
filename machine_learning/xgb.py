@@ -108,12 +108,11 @@ def train_model(data_path):
     display_predictions(xgbRegressor, X_test, y_test, names_test,  num_predictions=10)
 
     # display the decision tree
+    # graph1 = xgb.to_graphviz(xgbRegressor, tree_idx=0)
+    # graph1.render("xgb_tree 1")
 
-    graph1 = xgb.to_graphviz(xgbRegressor, tree_idx=0)
-    graph1.render("xgb_tree 1")
-
-    graph2 = xgb.to_graphviz(xgbRegressor, tree_idx=50)
-    graph2.render("xgb_tree 50")
+    # graph2 = xgb.to_graphviz(xgbRegressor, tree_idx=50)
+    # graph2.render("xgb_tree 50")
 
     
 if __name__ == "__main__":
