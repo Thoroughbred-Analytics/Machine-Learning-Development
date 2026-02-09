@@ -19,11 +19,14 @@ def train_model(data_path):
     df = pd.read_csv(data_path)
 
     # Encoding name features with target encoding
-    nameEncoder = TargetEncoder(cols=['sire', 'dam', 'bmSire'], smoothing=10.0)
+    nameEncoder = TargetEncoder(cols=['name', 'sire', 'dam', 'bmSire'], smoothing=10.0)
 
     y = df['rating']
+
     names = df['name']
-    X = df.drop(columns=['rating', 'name'])
+
+    X = df.drop(columns=['rating'])
+    
     X_train, X_test, y_train, y_test, names_train, names_test = train_test_split(
         X, y, names, test_size=0.2, random_state=42)
 
