@@ -13,7 +13,29 @@ import xgboost as xgb
 
 from evaluate import *
 
+"""
+Helper function to display the validation of the model during training.
+"""
+def graph_training(model):
+    results = model.evals_result()
 
+    # Plot
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+    epochs = len(results['validation_0']['logloss'])
+    x_axis = range(0, epochs)
+
+    # Logloss
+    ax1.plot(x_axis, results['validation_0']['logloss'], label='Train')
+    ax1.plot(x_axis, results['validation_1']['logloss'], label='Test')
+    ax1.legend()
+    ax1.set_ylabel('Log Loss')
+    ax1.set_xlabel('Boosting Round')
+    ax1.set_title('XGBoost Log Loss')
+    ax1.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
 
 def train_model(data_path):
     df = pd.read_csv(data_path)
@@ -26,7 +48,7 @@ def train_model(data_path):
     names = df['name']
 
     X = df.drop(columns=['rating'])
-    
+
     X_train, X_test, y_train, y_test, names_train, names_test = train_test_split(
         X, y, names, test_size=0.2, random_state=42)
 
@@ -35,15 +57,21 @@ def train_model(data_path):
 
 
     # rf = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=13)
-    xgbRegressor = xgb.XGBRegressor()
+    xgbRegressor = xgb.XGBRegressor(max_depth=6, 
+                                    learning_rate=0.1, 
+                                    n_estimators=100,  
+                                    eval_metric=['logloss', 'auc'], 
+                                    random_state=42)
   
     # Fitting the model
-    xgbRegressor.fit(X_train, y_train)
+    xgbRegressor.fit(X_train, y_train, 
+                     eval_set=[(X_train, y_train), (X_test, y_test)],  
+                     verbose=False)
 
 
     # Evaluating the model with predctions on X_test
     y_pred = xgbRegressor.predict(X_test)
-    
+
     mse = mean_squared_error(y_test, y_pred)
 
     r2 = r2_score(y_test, y_pred)
@@ -55,15 +83,12 @@ def train_model(data_path):
     print(f"accuracy: {accuracy}")
     print("===================================\n")
 
-    # display predictions
-    display_predictions(xgbRegressor, X_test, y_test, names_test,  num_predictions=10)
+    # Display Predictions for first 10 samples
+    #display_predictions(xgbRegressor, X_test, y_test, names_test,  num_predictions=10)
 
-    # display the decision tree
-    # graph1 = xgb.to_graphviz(xgbRegressor, tree_idx=0)
-    # graph1.render("xgb_tree 1")
+    # Display Training
+    graph_training(xgbRegressor)
 
-    # graph2 = xgb.to_graphviz(xgbRegressor, tree_idx=50)
-    # graph2.render("xgb_tree 50")
 
     
 if __name__ == "__main__":
