@@ -1,41 +1,24 @@
 import pandas as pd
 import numpy as np
+import xgboost as xgb
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.tree import plot_tree
-from category_encoders import TargetEncoder
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.tree import plot_tree
 from sklearn.model_selection import GridSearchCV
 from sklearn.dummy import DummyRegressor
-import xgboost as xgb
+from sklearn.preprocessing import LabelEncoder
 
+from category_encoders import TargetEncoder, BinaryEncoder
+from dataHandler import *
 from evaluate import *
+
 
 """
 Helper function to display the validation of the model during training.
 """
-# def graph_training(model):
-#     results = model.evals_result()
-
-#     # Plot
-#     fig, (ax1) = plt.subplots(1, figsize=(14, 5))
-
-#     epochs = len(results['validation_0']['rmse'])
-#     x_axis = range(0, epochs)
-
-#     ax1.plot(x_axis, results['validation_0']['rmse'], label='Train')
-#     ax1.plot(x_axis, results['validation_1']['rmse'], label='Test')
-#     ax1.legend()
-#     ax1.set_ylabel('RMSE')
-#     ax1.set_xlabel('Boosting Round')
-#     ax1.set_title('XGBoost RMSE')
-#     ax1.grid(True, alpha=0.3)
-
-#     plt.tight_layout()
-#     plt.show()
-
 def graph_training(model):
     results = model.evals_result()
     
@@ -84,16 +67,20 @@ def graph_training(model):
     ax2.set_xlabel('Boosting Round')
     ax2.set_title('Test RMSE (Zoomed)')
     ax2.grid(True, alpha=0.3)
+
     # Let y-axis auto-scale to show any variation
 
     plt.tight_layout()
     plt.show()
 
 def train_model(data_path):
-    df = pd.read_csv(data_path)
 
-    # Encoding name features with target encoding
+    df = csv_to_dataframe(data_path)
+
+    # Testing out different encoders for the names
     nameEncoder = TargetEncoder(cols=['name', 'sire', 'dam', 'bmSire'], smoothing=10.0)
+    binaryEncoder = BinaryEncoder(cols=['name', 'sire', 'dam', 'bmSire'], handle_unknown='ignore')
+
 
     y = df['rating']
 
@@ -104,16 +91,42 @@ def train_model(data_path):
     X_train, X_test, y_train, y_test, names_train, names_test = train_test_split(
         X, y, names, test_size=0.2, random_state=42)
 
-    X_train = nameEncoder.fit_transform(X_train, y_train)  
-    X_test = nameEncoder.transform(X_test)                 
+    # For encoders besides the label encoder
+    # X_train = nameEncoder.fit_transform(X_train, y_train)  
+    # X_test = nameEncoder.transform(X_test)                 
+    
 
+    param_grid = {
+        'n_estimators': [10, 20, 30, 50],
+        'max_depth': [3, 4, 5, 6],
+        'learning_rate': [0.01, 0.05, 0.1],
+        'min_child_weight': [1, 3, 5],
+        'subsample': [0.7, 0.8, 0.9]
+    }
+    xgbRegressor = xgb.XGBRegressor(random_state=42)
 
-    # rf = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=13)
-    xgbRegressor = xgb.XGBRegressor(max_depth=5, 
-                                    learning_rate=0.05, 
-                                    n_estimators=150,  
-                                    eval_metric='rmse', 
-                                    random_state=42)
+    grid_search = GridSearchCV(
+        xgbRegressor,
+        param_grid,
+        cv=5,
+        scoring='neg_root_mean_squared_error',
+        n_jobs=-1,
+        verbose=1
+    )
+
+    grid_search.fit(X_train, y_train)
+    
+    print(f"Best parameters found: {grid_search.best_params_}")
+
+    # xgbRegressor = xgb.XGBRegressor(max_depth=6, 
+    #                                 learning_rate=0.1, 
+    #                                 n_estimators=100,  
+    #                                 eval_metric='rmse', 
+    #                                 objective='reg:squarederror',
+    #                                 early_stopping_rounds=10,             
+    #                                 reg_alpha=0.1,          # L1 regularization
+    #                                 reg_lambda=1.0,         # L2 regularization
+    #                                 random_state=42)
   
     # Fitting the model
     xgbRegressor.fit(X_train, y_train, 
@@ -135,13 +148,12 @@ def train_model(data_path):
     print("===================================\n")
 
     # Display Predictions for first 10 samples
-    #display_predictions(xgbRegressor, X_test, y_test, names_test,  num_predictions=10)
+    display_predictions(xgbRegressor, X_test, y_test, names_test,  num_predictions=10)
 
     # Display Training
     graph_training(xgbRegressor)
 
-
     
 if __name__ == "__main__":
-    data_path = "data/baseData.csv"
+    data_path = "data/horseData.csv"
     train_model(data_path)
