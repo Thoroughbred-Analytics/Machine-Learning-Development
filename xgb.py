@@ -104,7 +104,7 @@ def train_model(data_path):
         'subsample': [0.7, 0.8, 0.9]
     }
     xgbRegressor = xgb.XGBRegressor(random_state=42)
-
+    # Best parameters found: {'learning_rate': 0.1, 'max_depth': 6, 'min_child_weight': 1, 'n_estimators': 50, 'subsample': 0.9}
     grid_search = GridSearchCV(
         xgbRegressor,
         param_grid,
@@ -117,6 +117,8 @@ def train_model(data_path):
     grid_search.fit(X_train, y_train)
     
     print(f"Best parameters found: {grid_search.best_params_}")
+
+    return
 
     # xgbRegressor = xgb.XGBRegressor(max_depth=6, 
     #                                 learning_rate=0.1, 
