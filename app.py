@@ -6,7 +6,7 @@ import joblib
 # Load your trained model
 @st.cache_resource
 def load_model():
-    return joblib.load('horse_model.pkl')
+    return joblib.load('xgb_model.pkl')
 
 model = load_model()
 

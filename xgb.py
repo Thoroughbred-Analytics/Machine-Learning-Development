@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import xgboost as xgb
+import pickle
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -165,6 +166,12 @@ def train_model(data_path):
 
     print(f"Feature Importances: {xgbRegressor.feature_importances_}")
     print(f"Best Iteration: {xgbRegressor.best_iteration}")
+
+    # Save the model to a file
+    with open('xgb_model.pkl', 'wb') as f:
+        pickle.dump(xgbRegressor, f)
+        
+
     
 if __name__ == "__main__":
     data_path = "data/encodedHorseData.csv"
