@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 
-def display_predictions(model, X_test, y_test, names_test, num_predictions=10):
+def display_predictions(model, X_test, y_test, names_test, num_predictions=10, idToName=None):
     """
     Displays a comparison of predicted and actual values for the test set.
     
@@ -23,6 +23,7 @@ def display_predictions(model, X_test, y_test, names_test, num_predictions=10):
     for i in range(min(num_predictions, len(y_pred))):
         if abs(y_pred[i] - y_test.iloc[i]) < 10:  # Consider it correct if within 10 rating points
             numCorrect += 1
+        #print(f"{idToName[names_test.iloc[i]]}: Predicted = {y_pred[i]:.2f}, Actual = {y_test.iloc[i]:.2f}")
         print(f"{names_test.iloc[i]}: Predicted = {y_pred[i]:.2f}, Actual = {y_test.iloc[i]:.2f}")
     accuracy = numCorrect / min(num_predictions, len(y_pred)) * 100
     print(f"\nAccuracy (within 10 rating points): {accuracy:.2f}%\n")
@@ -30,7 +31,8 @@ def display_predictions(model, X_test, y_test, names_test, num_predictions=10):
 
     # Prepare dataframe for plotting
     df_results = pd.DataFrame({
-        'horse_name': list(names_test.iloc[:num_predictions]),
+        # 'horse_name': [idToName[names_test.iloc[i]] for i in range(min(num_predictions, len(names_test)))],
+        'horse_name': [names_test.iloc[i] for i in range(min(num_predictions, len(names_test)))],
         'actual_rating': list(y_test.iloc[:num_predictions]),
         'predicted_rating': list(y_pred[:num_predictions])
     })

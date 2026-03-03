@@ -94,17 +94,21 @@ def csv_to_dataframe(path_to_csv):
     df['form'] = mapFormToHierarchy(df['form']).astype(int)
     df['damForm'] = mapFormToHierarchy(df['form2']).astype(int)
 
+
     # Drop original form2 column
     df = df.drop(['form2'], axis=1)
     
     # ---- Encoding the names of the horses with label encoding ----
-    uniqueNames = pd.concat([df['name'], df['sire'], df['dam'], df['bmSire']]).unique()
-    nameToId = {name: idx for idx, name in enumerate(uniqueNames)}
+    # uniqueNames = pd.concat([df['name'], df['sire'], df['dam'], df['bmSire']]).unique()
+    # nameToId = {name: idx for idx, name in enumerate(uniqueNames)}
 
-    df['name'] = df['name'].map(nameToId)
-    df['sire'] = df['sire'].map(nameToId)
-    df['dam'] = df['dam'].map(nameToId)
-    df['bmSire'] = df['bmSire'].map(nameToId)
+    # # Reverse mapping for the main code to convert back
+    #idToName = {idx: name for name, idx in nameToId.items()}
+
+    # df['name'] = df['name'].map(nameToId)
+    # df['sire'] = df['sire'].map(nameToId)
+    # df['dam'] = df['dam'].map(nameToId)
+    # df['bmSire'] = df['bmSire'].map(nameToId)
 
     # ---- One hot encoding for gender ----
     hotEncoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
@@ -117,4 +121,42 @@ def csv_to_dataframe(path_to_csv):
     df['fee'] = df['fee'].fillna(df['fee'].median())
     
 
+    return df
+
+def clean_data(df):
+    df = df[df['name'] != 'Unnamed']
+    print(f"Shape of dataset: {df.shape}")
+
+    # Dropping columns we know we don't need:
+    df = df.drop(columns=['ems', 'grade', 'grade4', 'code', 'lot', 'price', 'status', 'vendor', 'purchaser', 'prev. price'])
+
+    # converting fees to a numeric value
+    df['fee'] = pd.to_numeric(df['fee'], errors='coerce')
+
+    # Encode both form columns
+    df['form'] = df['form'].fillna('UNKNOWN')
+    df['form2'] = df['form2'].fillna('UNKNOWN')
+    
+    df['form'] = mapFormToHierarchy(df['form']).astype(int)
+    df['damForm'] = mapFormToHierarchy(df['form2']).astype(int)
+
+    df = df.drop(['form2'], axis=1)
+
+    # removing horses with ratings of 0 -> means they haven't raced yet?
+    df = df[df['rating'] > 0]
+
+    # ---- Turning the birth year to the age of the horse ----
+    df['yob'] = 2026 - df['yob']
+    df = df.rename(columns={'yob': 'age'})
+
+    # ---- One hot encoding for gender ----
+    hotEncoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+    encodedSex = hotEncoder.fit_transform(df[['sex']])
+    sexCols = hotEncoder.get_feature_names_out(['sex'])
+    sexDf = pd.DataFrame(encodedSex, columns=sexCols, index=df.index)
+    df = pd.concat([df.drop(columns=['sex']), sexDf], axis=1)
+    
+    # ---- Filling in missing values in Fee category ----
+    df['fee'] = df['fee'].fillna(df['fee'].median())
+    
     return df
