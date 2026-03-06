@@ -77,7 +77,7 @@ def graph_training(model):
 def train_model(data_path):
 
     # df = csv_to_dataframe(data_path)
-    df = pd.read_csv(data_path)
+    df = pd.read_csv(data_path, index_col=0)
 
     # Testing out different encoders for the names
     # nameEncoder = TargetEncoder(cols=['name', 'sire', 'dam', 'bmSire'], smoothing=10.0)
@@ -170,7 +170,6 @@ def train_model(data_path):
     # Save the model to a file
     with open('xgb_model.pkl', 'wb') as f:
         pickle.dump(xgbRegressor, f)
-        
 
     
 if __name__ == "__main__":
