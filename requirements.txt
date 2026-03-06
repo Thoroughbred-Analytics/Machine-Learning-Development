@@ -9,3 +9,4 @@ seaborn
 graphviz
 fastapi
 uvicorn
+xgboost
