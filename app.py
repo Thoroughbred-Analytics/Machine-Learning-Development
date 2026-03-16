@@ -9,7 +9,7 @@ from dataHandler import *
 # Load your trained model
 @st.cache_resource
 def load_model():
-    return joblib.load('xgb_model.pkl')
+    return joblib.load('models/xgb_model.pkl')
 
 # Loading the model can take some time, so we show a spinner
 with st.spinner('Loading model...'):
@@ -82,7 +82,6 @@ with col2:
 
 # Predict button
 if st.button("🎯 Predict Rating", type="primary", width="stretch"):
-    # TODO: Need to preprocess form, damform, sireform, bmsireform
 
     numericForm = mapFormToHierarchy(pd.Series([form]))[0]
     numericSireForm = mapFormToHierarchy(pd.Series([sireForm]))[0]

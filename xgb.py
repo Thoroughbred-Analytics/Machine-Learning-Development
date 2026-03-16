@@ -5,14 +5,13 @@ import pickle
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.tree import plot_tree
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, KFold
 from sklearn.dummy import DummyRegressor
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import cross_val_score
 
-from category_encoders import TargetEncoder, BinaryEncoder
 from dataHandler import *
 from evaluate import *
 
@@ -79,26 +78,23 @@ def train_model(data_path):
     # df = csv_to_dataframe(data_path)
     df = pd.read_csv(data_path, index_col=0)
 
-    # Testing out different encoders for the names
-    # nameEncoder = TargetEncoder(cols=['name', 'sire', 'dam', 'bmSire'], smoothing=10.0)
-    # binaryEncoder = BinaryEncoder(cols=['name', 'sire', 'dam', 'bmSire'], handle_unknown='ignore')
-
 
     y = df['rating']
     names = df['name']
-    X = df.drop(columns=['rating', 'name', 'sire', 'dam', 'bmSire'])  # Drop the target variable from the features
+    X = df.drop(columns=['rating', 'name', 'sire', 'dam', 'bmSire', 'damForm', 'rawErg', 'avgBmSireForm'])  # Drop the target variable from the features and any other features for testing
     print(X.head())
 
+    kfold = KFold(
+        n_splits=5,
+        shuffle=True,
+        random_state=42
+    )
 
-    X_train, X_test, y_train, y_test, names_train, names_test = train_test_split(
-        X, y, names, test_size=0.2, random_state=42)
+    # X_train, X_test, y_train, y_test, names_train, names_test = train_test_split(
+    #     X, y, names, test_size=0.2, random_state=42)
 
-    # === For encoders besides the label encoder ===
-    # X_train = nameEncoder.fit_transform(X_train, y_train)  
-    # X_test = nameEncoder.transform(X_test)          
     
-    """
-    For grid searching
+    # For grid searching
     param_grid = {
         'n_estimators': [10, 20, 30, 50],
         'max_depth': [3, 4, 5, 6],
@@ -107,69 +103,71 @@ def train_model(data_path):
         'subsample': [0.7, 0.8, 0.9]
     }
 
-    Best parameters found: {'learning_rate': 0.1, 'max_depth': 6, 'min_child_weight': 1, 'n_estimators': 50, 'subsample': 0.9}
+    # Best parameters found: {'learning_rate': 0.1, 'max_depth': 6, 'min_child_weight': 1, 'n_estimators': 50, 'subsample': 0.9}
     
     xgbRegressor = xgb.XGBRegressor(random_state=42)
     grid_search = GridSearchCV(
         xgbRegressor,
         param_grid,
-        cv=5,
+        cv=kfold,
         scoring='neg_root_mean_squared_error',
         n_jobs=-1,
         verbose=1
     )
 
-    grid_search.fit(X_train, y_train)
+    grid_search.fit(X, y)
     
     print(f"Best parameters found: {grid_search.best_params_}")
-    """
 
-    xgbRegressor = xgb.XGBRegressor(max_depth=8, 
-                                    learning_rate=0.1, 
-                                    n_estimators=50,  
-                                    min_child_weight=3,
-                                    subsample=0.8,
-                                    eval_metric='rmse', 
-                                    objective='reg:squarederror',
-                                    early_stopping_rounds=10,             
-                                    reg_alpha=0.1,          # L1 regularization
-                                    reg_lambda=1.0,         # L2 regularization
-                                    random_state=42)
+
+    # xgbRegressor = xgb.XGBRegressor(
+    #     max_depth=4,                  # keep at 4
+    #     learning_rate=0.03,           # keep
+    #     n_estimators=1000,            # keep, early stopping will land ~250-300
+    #     min_child_weight=10,          # increased from 7, more conservative splits
+    #     subsample=0.75,               # reduced from 0.8, more randomness
+    #     colsample_bytree=0.65,        # reduced from 0.75, stronger feature sampling
+    #     eval_metric='rmse',
+    #     objective='reg:squarederror',
+    #     early_stopping_rounds=40,
+    #     reg_alpha=0.3,                # increased from 0.1, stronger L1
+    #     reg_lambda=2.0,               # increased from 1.0, stronger L2
+    #     random_state=42)
   
     # Fitting the model
-    xgbRegressor.fit(X_train, y_train, 
-                     eval_set=[(X_train, y_train), (X_test, y_test)],  
-                     verbose=False)
+    # xgbRegressor.fit(X_train, y_train, 
+    #                  eval_set=[(X_train, y_train), (X_test, y_test)],  
+    #                  verbose=False)
 
 
-    for name, importance in zip(X_train.columns, xgbRegressor.feature_importances_):
-        print(name, importance)
+    # for name, importance in zip(X_.columns, xgbRegressor.feature_importances_):
+    #     print(name, importance)
 
-    # Evaluating the model with predctions on X_test
-    y_pred = xgbRegressor.predict(X_test)
+    # # Evaluating the model with predctions on X_test
+    # y_pred = xgbRegressor.predict(X_test)
 
-    mse = mean_squared_error(y_test, y_pred)
-    mae = mean_absolute_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
+    # mse = mean_squared_error(y_test, y_pred)
+    # mae = mean_absolute_error(y_test, y_pred)
+    # r2 = r2_score(y_test, y_pred)
     
-    print("\n==== Model Evaluation Metrics: ====")
-    print(f"MSE:  {mse:.4f}")
-    print(f"MAE:  {mae:.4f}")
-    print(f"R²:   {r2:.4f}")
-    print("===================================\n")
+    # print("\n==== Model Evaluation Metrics: ====")
+    # print(f"MSE:  {mse:.4f}")
+    # print(f"MAE:  {mae:.4f}")
+    # print(f"R²:   {r2:.4f}")
+    # print("===================================\n")
 
-    # Display Predictions for first 10 samples
-    display_predictions(xgbRegressor, X_test, y_test, names_test,  num_predictions=10, idToName=None)
+    # # Display Predictions for first 10 samples
+    # display_predictions(xgbRegressor, X_test, y_test, names_test,  num_predictions=10, idToName=None)
 
-    # Display Training
-    graph_training(xgbRegressor)
+    # # Display Training
+    # graph_training(xgbRegressor)
 
-    print(f"Feature Importances: {xgbRegressor.feature_importances_}")
-    print(f"Best Iteration: {xgbRegressor.best_iteration}")
+    # print(f"Feature Importances: {xgbRegressor.feature_importances_}")
+    # print(f"Best Iteration: {xgbRegressor.best_iteration}")
 
-    # Save the model to a file
-    with open('xgb_model.pkl', 'wb') as f:
-        pickle.dump(xgbRegressor, f)
+    # # Save the model to a file
+    # with open('models/xgb_model.pkl', 'wb') as f:
+    #     pickle.dump(xgbRegressor, f)
 
     
 if __name__ == "__main__":
