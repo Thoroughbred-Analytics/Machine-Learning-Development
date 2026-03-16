@@ -156,7 +156,7 @@ def train_model(data_path):
     print("===================================\n")
 
     # Display Predictions for first 10 samples
-    display_predictions(predictions, X, y, names, num_predictions=10)
+    display_predictions(predictions, X, y, names, num_predictions=15)
 
     # Display Training
     graph_training(fold_results)

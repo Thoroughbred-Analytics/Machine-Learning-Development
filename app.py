@@ -90,13 +90,13 @@ if st.button("🎯 Predict Rating", type="primary", width="stretch"):
 
     input_data = pd.DataFrame({
         'form': [numericForm],
-        'rawErg': [rawErg],
+        # 'rawErg': [rawErg],
         'erg': [erg],
         'age': [age],
         'fee': [fee],
         'crop': [crop],
         'ems3': [ems3],
-        'damForm': [numericDamForm],
+       # 'damForm': [numericDamForm],
         'sex_C': [1 if sex == 'C' else 0],
         'sex_F': [1 if sex == 'F' else 0],
         'sex_G': [1 if sex == 'G' else 0],
@@ -108,7 +108,7 @@ if st.button("🎯 Predict Rating", type="primary", width="stretch"):
         'avgDamErg': [damErg],
         'avgBmSireRating': [bmSireRating],
         'avgBmSireErg': [bmSireErg],
-        'avgBmSireForm': [numericBMSireForm]
+        # 'avgBmSireForm': [numericBMSireForm]
         
     })
     
