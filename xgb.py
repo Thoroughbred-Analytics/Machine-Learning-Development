@@ -109,8 +109,8 @@ def train_model(data_path):
     # ============== Hyperparameter Tuning with RandomizedSearchCV ==============
 
     xgbRegressor = xgb.XGBRegressor(
-         max_depth=4,                  # keep at 4
-         learning_rate=0.05,           # keep
+         max_depth=8,                  # keep at 4
+         learning_rate=0.1,           # keep
          n_estimators=300,            # keep, early stopping will land ~250-300
          min_child_weight=5,          # increased from 7, more conservative splits
          subsample=0.85,               # reduced from 0.8, more randomness
@@ -118,7 +118,7 @@ def train_model(data_path):
          eval_metric='rmse',
          objective='reg:squarederror',
          early_stopping_rounds=40,
-         reg_alpha=0,                # increased from 0.1, stronger L1
+         reg_alpha=0.1,                # increased from 0.1, stronger L1
          reg_lambda=5.0,               # increased from 1.0, stronger L2
          gamma=0.1,
          random_state=42)
@@ -162,6 +162,9 @@ def train_model(data_path):
     graph_training(fold_results)
     print(f"Feature Importances: {xgbRegressor.feature_importances_}")
     print(f"Best Iteration: {xgbRegressor.best_iteration}")
+
+    # Display feature importance
+    display_feature_importance(xgbRegressor, X)
 
     # Save the model to a file
     with open('models/xgb_model.pkl', 'wb') as f:

@@ -5,6 +5,7 @@ import numpy as np
 
 
 def display_predictions(y_pred, X, y, names, num_predictions=10):
+
     """
     Displays a comparison of predicted and actual values.
     
@@ -77,3 +78,24 @@ def display_predictions(y_pred, X, y, names, num_predictions=10):
 
     plt.tight_layout()
     plt.show()
+
+def display_feature_importance(model, X):
+    feature_importance = model.feature_importances_
+    feature_names = X.columns
+
+    print("Feature importance scores:")
+    for name, importance in zip(feature_names, feature_importance):
+        print(f"{name}: {importance:.4f}")
+    
+    # create histogram of the feature importance scores
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=feature_names, y=feature_importance, palette='viridis')
+    plt.title('Feature Importance Scores')
+    plt.ylabel('Importance Score')
+    plt.xlabel('Feature')   
+
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.show()
+    
+    
