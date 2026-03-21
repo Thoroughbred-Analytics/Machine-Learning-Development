@@ -64,7 +64,9 @@ def train_model(data_path):
     y = df['rating']
     names = df['name']
     X = df.drop(columns=['rating', 'name', 'sire', 'dam', 'bmSire', 'damForm', 'rawErg', 'avgBmSireForm'])  # Drop the target variable from the features and any other features for testing
-    print(X.head())
+    
+    print("============ Sample training data ============")
+    print(X.head(10))
 
     kfold = KFold(
         n_splits=5,
@@ -72,27 +74,33 @@ def train_model(data_path):
         random_state=42
     )
     
-    # ============== Hyperparameter Tuning with RandomizedSearchCV ==============
+    #============== Hyperparameter Tuning with RandomizedSearchCV ==============
+
     # param_grid = {
-    #     # 1. Tree structure — controls model complexity
-    #     "max_depth": [3, 5, 7],                    # Depth of each tree; lower = simpler
-    #     "min_child_weight": [1, 3, 5],             # Min samples per leaf; higher = more conservative
+    #     # 1. Tree structure — controls model complexity (REDUCED to prevent overfitting)
+    #     "max_depth": [3, 4, 5, 6],                 # Shallower trees to reduce variance and spurious patterns
+    #     "min_child_weight": [2, 4, 7, 10],         # Higher values = more conservative splits, reduces feature dominance
 
-    #     # 2. Boosting strength — controls learning dynamics
-    #     "n_estimators": [100, 300, 500],           # Number of trees
-    #     "learning_rate": [0.01, 0.05, 0.1],        # Step size; pair lower LR with more trees
+    #     # 2. Boosting strength — more trees with lower learning rate for better generalization
+    #     "n_estimators": [200, 400, 600, 800],      # More trees with lower LR compensates
+    #     "learning_rate": [0.005, 0.01, 0.03, 0.05],  # Lower LR = slower learning = better generalization (avoid 0.1)
 
-    #     # 3. Sampling — reduces overfitting via randomness
-    #     "subsample": [0.7, 0.85, 1.0],             # Row sampling per tree
-    #     "colsample_bytree": [0.7, 0.85, 1.0],      # Feature sampling per tree
+    #     # 3. Sampling — AGGRESSIVE subsampling to increase diversity and reduce feature dominance
+    #     "subsample": [0.6, 0.7, 0.8, 0.9],         # Row sampling - lower = more variance reduction
+    #     "colsample_bytree": [0.5, 0.65, 0.8, 0.95],  # Feature sampling - CRITICAL: prevent same features dominating
+    #     "colsample_bylevel": [0.5, 0.7, 0.9],      # Per-level feature subsampling for extra diversity
 
-    #     # 4. Regularization — penalizes complexity directly
-    #     "gamma": [0, 0.1, 0.3],                    # Min loss reduction to split a node
-    #     "reg_alpha": [0, 0.1, 1.0],                # L1 regularization
-    #     "reg_lambda": [1.0, 5.0, 10.0],            # L2 regularization (default is 1)
+    #     # 4. Regularization — STRONG penalties to prevent overfitting and feature dominance
+    #     "gamma": [0.1, 0.5, 1.0, 2.0],             # Higher = require more loss reduction to split (prevents overfitting)
+    #     "reg_alpha": [0.01, 0.1, 0.5, 1.0],        # L1 regularization - forces feature selection diversity
+    #     "reg_lambda": [2.0, 5.0, 10.0, 15.0],      # L2 regularization - reduces coefficient magnitude
     # }
     
-    # xgbRegressor = xgb.XGBRegressor(random_state=42, objective='reg:squarederror', n_jobs=-1)
+    # xgbRegressor = xgb.XGBRegressor(random_state=42, 
+    #                                 objective='reg:squarederror',
+    #                                 n_jobs=-1,
+    #                                 device='cuda',
+    #                                 tree_method="hist",)
     # grid_search = RandomizedSearchCV(
     #     xgbRegressor,
     #     param_grid,
@@ -103,25 +111,28 @@ def train_model(data_path):
     #     verbose=2
     # )
 
+
     # grid_search.fit(X, y)
     
     # print(f"Best parameters found: {grid_search.best_params_}")
-    # ============== Hyperparameter Tuning with RandomizedSearchCV ==============
+
+    #============== Hyperparameter Tuning with RandomizedSearchCV ==============
 
     xgbRegressor = xgb.XGBRegressor(
-         max_depth=8,                  # keep at 4
-         learning_rate=0.1,           # keep
-         n_estimators=300,            # keep, early stopping will land ~250-300
-         min_child_weight=5,          # increased from 7, more conservative splits
-         subsample=0.85,               # reduced from 0.8, more randomness
-         colsample_bytree=1.0,        # reduced from 0.75, stronger feature sampling
-         eval_metric='rmse',
-         objective='reg:squarederror',
-         early_stopping_rounds=40,
-         reg_alpha=0.1,                # increased from 0.1, stronger L1
-         reg_lambda=5.0,               # increased from 1.0, stronger L2
-         gamma=0.1,
-         random_state=42)
+        max_depth=5,             
+        learning_rate=0.03,         
+        n_estimators=400,            
+        min_child_weight=10,          
+        subsample=0.9,              
+        colsample_bytree=0.9,        
+        colsample_bylevel=0.9,       
+        eval_metric='rmse',
+        objective='reg:squarederror',
+        early_stopping_rounds=40,
+        reg_alpha=0.1,                
+        reg_lambda=15.0,              
+        gamma=0.1,
+        random_state=42)
 
     # Out of fold predictions for evaluation and feature importance analysis
     predictions = np.zeros(len(y))
