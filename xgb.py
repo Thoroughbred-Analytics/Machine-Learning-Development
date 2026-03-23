@@ -15,45 +15,81 @@ from sklearn.model_selection import cross_val_score
 from dataHandler import *
 from evaluate import *
 
+def find_best_hyperparameters(data_path):
+    # df = csv_to_dataframe(data_path)
+    df = pd.read_csv(data_path, index_col=0)
 
-"""
-Helper function to display the validation of the model during training.
-"""
-def graph_training(fold_results):
-    """
-    Args:
-        fold_results: list of evals_result() dicts, one per fold
-                      e.g. [{'validation_0': {'rmse': [...]}}, ...]
-    """
-    all_val_rmse = [fold['validation_0']['rmse'] for fold in fold_results]
 
-    # Trim all curves to the shortest fold (early stopping may vary length)
-    min_len = min(len(curve) for curve in all_val_rmse)
-    all_val_rmse = np.array([curve[:min_len] for curve in all_val_rmse])
+    
+    y = df['rating']
+    names = df['name']
+    X = df.drop(columns=['rating', 'name', 'sire', 'dam', 'bmSire', 'damForm', 'rawErg', 'avgBmSireForm'])  # Drop the target variable from the features and any other features for testing
+    
+    
+    print("============ Sample training data ============")
+    print(X.head(10))
 
-    mean_rmse = np.mean(all_val_rmse, axis=0)
-    std_rmse  = np.std(all_val_rmse,  axis=0)
-    x_axis    = np.arange(min_len)
+    kfold = KFold(
+        n_splits=5,
+        shuffle=True,
+        random_state=42
+    )
+    
+    #  Hyperparameter Tuning with RandomizedSearchCV
+    #  
+    param_grid = {
+        # 1. Tree structure — controls model complexity (REDUCED to prevent overfitting)
+        "max_depth": [3, 4, 5, 6],                 # Shallower trees to reduce variance and spurious patterns
+        "min_child_weight": [2, 4, 7, 10],         # Higher values = more conservative splits, reduces feature dominance
 
-    fig, ax = plt.subplots(figsize=(12, 5))
+        # 2. Boosting strength — more trees with lower learning rate for better generalization
+        "n_estimators": [200, 400, 600, 800],      # More trees with lower LR compensates
+        "learning_rate": [0.005, 0.01, 0.03, 0.05],  # Lower LR = slower learning = better generalization (avoid 0.1)
 
-    # Plot each fold lightly in the background
-    for i, curve in enumerate(all_val_rmse):
-        ax.plot(x_axis, curve, color='steelblue', alpha=0.2, linewidth=1, label='Fold RMSE' if i == 0 else None)
+        # 3. Sampling — AGGRESSIVE subsampling to increase diversity and reduce feature dominance
+        "subsample": [0.6, 0.7, 0.8, 0.9],         # Row sampling - lower = more variance reduction
+        "colsample_bytree": [0.5, 0.65, 0.8, 0.95],  # Feature sampling - CRITICAL: prevent same features dominating
+        "colsample_bylevel": [0.5, 0.7, 0.9],      # Per-level feature subsampling for extra diversity
 
-    # Plot mean curve and std band
-    ax.plot(x_axis, mean_rmse, color='steelblue', linewidth=2.5, label='Mean Val RMSE')
-    ax.fill_between(x_axis, mean_rmse - std_rmse, mean_rmse + std_rmse,
-                    alpha=0.2, color='steelblue', label='±1 Std Dev')
+        # 4. Regularization — STRONG penalties to prevent overfitting and feature dominance
+        "gamma": [0.1, 0.5, 1.0, 2.0],             # Higher = require more loss reduction to split (prevents overfitting)
+        "reg_alpha": [0.01, 0.1, 0.5, 1.0],        # L1 regularization - forces feature selection diversity
+        "reg_lambda": [2.0, 5.0, 10.0, 15.0],      # L2 regularization - reduces coefficient magnitude
 
-    ax.set_xlabel('Boosting Round', fontsize=12)
-    ax.set_ylabel('RMSE', fontsize=12)
-    ax.set_title('Validation RMSE Across K-Folds', fontsize=14, pad=20)
-    ax.legend(fontsize=11)
-    ax.grid(True, alpha=0.3)
+        "colsample_bynode": [0.5, 0.7, 0.9],       # Per-split feature sampling (finer than bylevel)
+        "max_delta_step": [0, 1, 5],               # Useful for imbalanced targets / capping updates
+        "grow_policy": ["depthwise", "lossguide"], # lossguide = LightGBM-style leaf-wise growth
+        "max_leaves": [0, 16, 32, 64],             # Only relevant when grow_policy='lossguide'
+        "rate_drop": [0.1, 0.2],                   # For DART booster only
+        "booster": ["gbtree", "dart"],             # DART adds dropout regularization
+    }
 
-    plt.tight_layout()
-    plt.show()
+    scoring = {
+        'rmse': 'neg_root_mean_squared_error',
+        'mae': 'neg_mean_absolute_error',
+        'r2': 'r2'
+    }
+    
+    xgbRegressor = xgb.XGBRegressor(random_state=42, 
+                                    objective='reg:squarederror',
+                                    device='cuda',
+                                    tree_method="hist",)
+    grid_search = RandomizedSearchCV(
+        xgbRegressor,
+        param_grid,
+        scoring=scoring,
+        refit='rmse',   # Still optimize for RMSE, but log others
+        cv=kfold,
+        n_iter=300,
+        n_jobs=1,
+        verbose=2
+    )
+
+
+    grid_search.fit(X, y)
+    
+    print(f"Best parameters found: {grid_search.best_params_}")
+
 
 def train_model(data_path):
 
@@ -74,49 +110,6 @@ def train_model(data_path):
         random_state=42
     )
     
-    #============== Hyperparameter Tuning with RandomizedSearchCV ==============
-
-    # param_grid = {
-    #     # 1. Tree structure — controls model complexity (REDUCED to prevent overfitting)
-    #     "max_depth": [3, 4, 5, 6],                 # Shallower trees to reduce variance and spurious patterns
-    #     "min_child_weight": [2, 4, 7, 10],         # Higher values = more conservative splits, reduces feature dominance
-
-    #     # 2. Boosting strength — more trees with lower learning rate for better generalization
-    #     "n_estimators": [200, 400, 600, 800],      # More trees with lower LR compensates
-    #     "learning_rate": [0.005, 0.01, 0.03, 0.05],  # Lower LR = slower learning = better generalization (avoid 0.1)
-
-    #     # 3. Sampling — AGGRESSIVE subsampling to increase diversity and reduce feature dominance
-    #     "subsample": [0.6, 0.7, 0.8, 0.9],         # Row sampling - lower = more variance reduction
-    #     "colsample_bytree": [0.5, 0.65, 0.8, 0.95],  # Feature sampling - CRITICAL: prevent same features dominating
-    #     "colsample_bylevel": [0.5, 0.7, 0.9],      # Per-level feature subsampling for extra diversity
-
-    #     # 4. Regularization — STRONG penalties to prevent overfitting and feature dominance
-    #     "gamma": [0.1, 0.5, 1.0, 2.0],             # Higher = require more loss reduction to split (prevents overfitting)
-    #     "reg_alpha": [0.01, 0.1, 0.5, 1.0],        # L1 regularization - forces feature selection diversity
-    #     "reg_lambda": [2.0, 5.0, 10.0, 15.0],      # L2 regularization - reduces coefficient magnitude
-    # }
-    
-    # xgbRegressor = xgb.XGBRegressor(random_state=42, 
-    #                                 objective='reg:squarederror',
-    #                                 n_jobs=-1,
-    #                                 device='cuda',
-    #                                 tree_method="hist",)
-    # grid_search = RandomizedSearchCV(
-    #     xgbRegressor,
-    #     param_grid,
-    #     cv=kfold,
-    #     n_iter=100,
-    #     scoring='neg_root_mean_squared_error',  # Use negative RMSE for regression
-    #     n_jobs=-1,
-    #     verbose=2
-    # )
-
-
-    # grid_search.fit(X, y)
-    
-    # print(f"Best parameters found: {grid_search.best_params_}")
-
-    #============== Hyperparameter Tuning with RandomizedSearchCV ==============
 
     xgbRegressor = xgb.XGBRegressor(
         max_depth=5,             
@@ -184,4 +177,5 @@ def train_model(data_path):
     
 if __name__ == "__main__":
     data_path = "data/encodedHorseData.csv"
-    train_model(data_path)
+    #train_model(data_path)
+    find_best_hyperparameters(data_path)

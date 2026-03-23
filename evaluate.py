@@ -98,4 +98,41 @@ def display_feature_importance(model, X):
     plt.tight_layout()
     plt.show()
     
-    
+"""
+Helper function to display the validation of the model during training.
+"""
+def graph_training(fold_results):
+    """
+    Args:
+        fold_results: list of evals_result() dicts, one per fold
+                      e.g. [{'validation_0': {'rmse': [...]}}, ...]
+    """
+    all_val_rmse = [fold['validation_0']['rmse'] for fold in fold_results]
+
+    # Trim all curves to the shortest fold (early stopping may vary length)
+    min_len = min(len(curve) for curve in all_val_rmse)
+    all_val_rmse = np.array([curve[:min_len] for curve in all_val_rmse])
+
+    mean_rmse = np.mean(all_val_rmse, axis=0)
+    std_rmse  = np.std(all_val_rmse,  axis=0)
+    x_axis    = np.arange(min_len)
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+
+    # Plot each fold lightly in the background
+    for i, curve in enumerate(all_val_rmse):
+        ax.plot(x_axis, curve, color='steelblue', alpha=0.2, linewidth=1, label='Fold RMSE' if i == 0 else None)
+
+    # Plot mean curve and std band
+    ax.plot(x_axis, mean_rmse, color='steelblue', linewidth=2.5, label='Mean Val RMSE')
+    ax.fill_between(x_axis, mean_rmse - std_rmse, mean_rmse + std_rmse,
+                    alpha=0.2, color='steelblue', label='±1 Std Dev')
+
+    ax.set_xlabel('Boosting Round', fontsize=12)
+    ax.set_ylabel('RMSE', fontsize=12)
+    ax.set_title('Validation RMSE Across K-Folds', fontsize=14, pad=20)
+    ax.legend(fontsize=11)
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
