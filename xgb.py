@@ -43,7 +43,7 @@ def find_best_hyperparameters(data_path):
         "min_child_weight": [2, 4, 7, 10],         # Higher values = more conservative splits, reduces feature dominance
 
         # 2. Boosting strength — more trees with lower learning rate for better generalization
-        "n_estimators": [200, 400, 600, 800],      # More trees with lower LR compensates
+        "n_estimators": [200, 400, 600],      # More trees with lower LR compensates
         "learning_rate": [0.005, 0.01, 0.03, 0.05],  # Lower LR = slower learning = better generalization (avoid 0.1)
 
         # 3. Sampling — AGGRESSIVE subsampling to increase diversity and reduce feature dominance
@@ -58,7 +58,6 @@ def find_best_hyperparameters(data_path):
 
         "colsample_bynode": [0.5, 0.7, 0.9],       # Per-split feature sampling (finer than bylevel)
         "max_delta_step": [0, 1, 5],               # Useful for imbalanced targets / capping updates
-        "grow_policy": ["depthwise", "lossguide"], # lossguide = LightGBM-style leaf-wise growth
         "max_leaves": [0, 16, 32, 64],             # Only relevant when grow_policy='lossguide'
         "rate_drop": [0.1, 0.2],                   # For DART booster only
         "booster": ["gbtree", "dart"],             # DART adds dropout regularization
@@ -112,19 +111,24 @@ def train_model(data_path):
     
 
     xgbRegressor = xgb.XGBRegressor(
-        max_depth=5,             
+        max_depth=6,             
         learning_rate=0.03,         
-        n_estimators=400,            
-        min_child_weight=10,          
+        n_estimators=200,            
+        min_child_weight=7,          
         subsample=0.9,              
-        colsample_bytree=0.9,        
-        colsample_bylevel=0.9,       
+        colsample_bytree=0.95,        
+        colsample_bylevel=0.9,
+        colsample_bynode=0.7,       
         eval_metric='rmse',
         objective='reg:squarederror',
         early_stopping_rounds=40,
-        reg_alpha=0.1,                
-        reg_lambda=15.0,              
-        gamma=0.1,
+        reg_alpha=1.0,                
+        reg_lambda=2.0,              
+        gamma=2.0,
+        rate_drop=0.2,
+        max_leaves=64,
+        max_delta_step=0,
+        booster='gbtree',
         random_state=42)
 
     # Out of fold predictions for evaluation and feature importance analysis
@@ -177,5 +181,5 @@ def train_model(data_path):
     
 if __name__ == "__main__":
     data_path = "data/encodedHorseData.csv"
-    #train_model(data_path)
-    find_best_hyperparameters(data_path)
+    train_model(data_path)
+    #find_best_hyperparameters(data_path)
