@@ -19,7 +19,6 @@ def find_best_hyperparameters(data_path):
     # df = csv_to_dataframe(data_path)
     df = pd.read_csv(data_path, index_col=0)
 
-
     
     y = df['rating']
     names = df['name']
